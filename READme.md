@@ -1,8 +1,8 @@
 # **Multi-Node swift installation**
 
-## 
+ <font size="4">
 
-### If you gave been following along we have already installed [KVM](https://github.com/rizwan192/KVM-Virtualization-Ubuntu-20.04) and then we deployed a [SAIO](https://github.com/rizwan192/SAIO-Ubuntu18). Today we will deploy Openstack Swift on multiple nodes. We will follow our previous [SAIO](https://github.com/rizwan192/SAIO-Ubuntu18) deployment guide for the most part of this installation process but there are some configuration changes as we have multiple vms this time.  We will use different VMs for proxy server and object server. Our setup configurations are as follows
+If you have been following along we have already installed [KVM](https://github.com/rizwan192/KVM-Virtualization-Ubuntu-20.04) and then we deployed a [SAIO](https://github.com/rizwan192/SAIO-Ubuntu18). Today we will deploy Openstack Swift on multiple nodes. We will follow our previous [SAIO](https://github.com/rizwan192/SAIO-Ubuntu18) deployment guide for the most part of this installation process but there are some configuration changes as we have multiple vms this time.  We will use different VMs for proxy server and object server. Our setup configurations are as follows
 
 | Proxy VM | Object VM |
 |----------|-----------|
@@ -10,21 +10,25 @@
 |1 vCPU    | 1 vCPU    |
 |8 GB storage|8 GB storage|
 
-### We also use 4*1GB Storage block device for storage in the object server. We use the following two vms for this installation
+We also use 4*1GB Storage block device for storage in the object server. We use the following two vms for this installation
 
-### **Proxy VM IP:** 192.168.122.131
+* **Proxy VM IP:** 192.168.122.131
 
-### **Object VM IP:** 192.168.122.99
+* **Object VM IP:** 192.168.122.99
 
 ![img19](images/19.png)
 
-### We will use one vm only for the proxy service and the other vm will have account, container, and object services. We will first configure the proxy server and then we will move onto the object server
+We will use one vm only for the proxy service and the other vm will have account, container, and object services. We will first configure the proxy server and then we will move onto the object server
+
+
+
 
 ## **Proxy VM**
 
 ---
 
 We need to install these dependencies first
+ <font size="2">
 
 ```bash
 
@@ -40,7 +44,11 @@ apt-get install python-coverage python-dev python-nose \
 apt update
 ```
 
+</font>
+
 Now we will get the codes from the Openstack Swifts github repository. We use the ```train``` version of swift but you can  use more recent versions. However if you install any other version you might encounter some errors. We chose the ```train``` version as it showed less dependency errors
+
+ <font size="2">
 
 ```bash
 git clone https://github.com/openstack/swift.git
@@ -50,7 +58,10 @@ pip install -r requirements.txt
 python setup.py install
 ````
 
+ </font>
 We will now create a folder and add ```swift``` as user. We also change the folder's permissions
+
+ <font size="2">
 
 ```bash
 cd
@@ -59,8 +70,11 @@ useradd swift
 chmod -R 757 /etc/swift
 apt update
 ```
+</font>
 
 1st we will configure ```rsync```. This has to be done on all the vm. We will need a file that we will just copy from the swift sample config files and make some changes
+
+ <font size="2">
 
 ```bash
 cd /swift/etc
@@ -68,37 +82,49 @@ cp rsyncd.conf-sample /etc/rsyncd.conf
 cd /etc
 vim rsyncd.conf
 ```
-
+</font>
 We now edit this file. we will just add one field named ```address``` and add our vm's ip address ```192.168.122.131```
+ <font size="2">
 
 ```bash
 address = 192.168.122.131 # the ip address of the proxy vm
 ```
-
+</font>
 ![img1](images/1.png)
 
 Now we will need to enable ```rsync``` with the following command
+
+ <font size="2">
 
 ```bash
 vim /etc/default/rsync
 ```
 
+</font>
 We change ```RSYNC_ENABLE=true```
 
 ![img2](images/2.png)
 
 Now we will enable and start rsync
 
+ <font size="2">
+
 ```bash
 systemctl enable rsync
 systemctl start rsync
 ```
 
+</font>
+
 If we can test ```rsync```
+
+ <font size="2">
 
 ```bash
 rsync -rtv rsync://swift@192.168.122.131
 ```
+
+</font>
 
 We can see it's working
 
@@ -106,12 +132,17 @@ We can see it's working
 
 Now that we have ```rsync``` on the proxy node working we will start the memcached service
 
+ <font size="2">
+
  ```bash
 systemctl enable memcached
 systemctl start memcached
 ```
 
+</font>
 We will edit two more files that we will copy from the swift git repository
+
+ <font size="2">
 
 ```bash
 cd /swift/etc
@@ -119,11 +150,17 @@ cp proxy-server.conf-sample /etc/swift/proxy-server.conf
 cp swift.conf-sample /etc/swift/swift.conf
 ```
 
+</font>
+
 The ```proxy-server.conf``` has the ```bind_ip``` that we will update.
+
+ <font size="2">
 
 ```bash
 vim /etc/swift/proxy-server.conf
 ```
+
+</font>
 
 We change the bind ip to the proxy vm ip which is ```192.168.122.131```
 
@@ -131,25 +168,37 @@ We change the bind ip to the proxy vm ip which is ```192.168.122.131```
 
 On line 173 we change the following statements to true
 
+ <font size="2">
+
 ```bash
 allow_account_management = true
 account_autocreate = true
 ```
 
+</font>
+
 In the other file ```swift.conf``` that we copied, we need to add the 64-bit hash string. In a real-world deployment, these will be confidential
+
+ <font size="2">
 
 ```bash
 swift_hash_path_suffix = RzUfDdu32L7J2ZBDYgsD6YI3Xie7hTVO8/oaQbpTbI8=
 swift_hash_path_prefix = OZ1uQJNjJzTuFaM8X3v%fsJ1iR#F8wJjf9uhRiABevQ4
 ```
 
+</font>
 First we use the following command to delete any old files we might have. If this is your first time making the ring files then no need to run this command.
+
+ <font size="2">
 
 ```bash
 rm -f *.builder *.ring.gz backups/*.builder backups/*.ring.gz
 ```
 
+</font>
 Now we will create ring files
+
+ <font size="2">
 
 ```bash
 cd /etc/swift
@@ -158,7 +207,11 @@ swift-ring-builder container.builder create 3 3 1
 swift-ring-builder object.builder create 3 3 1
 ```
 
+</font>
+
 Our object vm ip address is ```192.168.122.99```. We will use this ip to configure the ring files even though we still haven't configured our object server. The only way proxy-server knows about other nodes through out the swift installation is this ring file. So this ring in the proxy  server is keeping the whole installation together. It is the brain of swift installation. The files we will now needs to be on the nodes of the deployment. We will copy these files to our object server soon. For example if we have five object servers then these files need to be copied in all the five object server
+
+ <font size="2">
 
 ```bash
 swift-ring-builder account.builder add r1z1-192.168.122.99:6002/d1 100
@@ -178,7 +231,11 @@ swift-ring-builder container.builder add r1z1-192.168.122.99:6001/d4 100
 swift-ring-builder object.builder add r1z1-192.168.122.99:6000/d4 100
 ````
 
+</font>
+
 Once we have created the ring files we need to ```rebalance``` the ring. Every time we made any change in the ring files we will need to ```rebalance``` them
+
+ <font size="2">
 
 ```bash
 swift-ring-builder account.builder rebalance
@@ -186,11 +243,17 @@ swift-ring-builder container.builder rebalance
 swift-ring-builder object.builder rebalance
 ```
 
+</font>
+
 we can check using the following command.
+
+ <font size="2">
 
 ```bash
 swift-ring-builder account.builder
 ```
+
+</font>
 
 ![img16](images/16.png)
 
@@ -200,9 +263,13 @@ If we check our ```/etc/swift``` folder we can see there are few new files. We w
 
 We are almost done with our proxy vm. Now we will just start our proxy service.
 
+ <font size="2">
+
 ```bash
 swift-init proxy start
 ```
+
+</font>
 
 We can see that ```proxy-server``` started without any complication
 
@@ -258,6 +325,7 @@ vim rsyncd.conf
 ```bash
 address = 192.168.122.99 # the ip address of the object vm
 ```
+
 ![img1](images/18.png)
 
 Enabling ```rsync```
